@@ -6,18 +6,13 @@
 
     tools:context="camdet.credr.abhilashkulkarni.cameradetector.OpenCVCameraScreen">
 
-    <org.opencv.android.JavaCameraView
+    <camdet.credr.abhilashkulkarni.cameradetector.JavaCameraView2
         android:layout_width="fill_parent"
         android:layout_height="fill_parent"
         android:id="@+id/HelloOpenCvView"
         opencv:show_fps="true"
         opencv:camera_id="any" />
 
-    <org.opencv.android.JavaCameraView
-        android:layout_width="fill_parent"
-        android:layout_height="fill_parent"
-        android:id="@+id/CannyOpenCvView"
-        opencv:show_fps="true"
-        opencv:camera_id="any" />
+
 
 </RelativeLayout>

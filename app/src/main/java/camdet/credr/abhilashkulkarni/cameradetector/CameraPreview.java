@@ -20,7 +20,7 @@ import java.util.List;
 public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback {
     private SurfaceHolder mHolder;
     public Camera mCamera;
-    private String TAG = "Check";
+    private String TAG = "WTF";
     public Boolean isPreview = false;
     private Display display;
     public CameraPreview(Context context) {
@@ -45,6 +45,13 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
             if (mCamera == null) {
                 Log.d(TAG, "In if condition:40");
                 mCamera = Camera.open();
+                try {
+                    Log.d(TAG, "Min Value" + mCamera.getParameters().getMinExposureCompensation());
+                    Log.d(TAG, "Max Value" + mCamera.getParameters().getMaxExposureCompensation());
+                }
+                catch(Exception e){
+                    Log.e(TAG,"Error: " + e.getMessage());
+                }
             }
             isPreview = true;
         } catch (Exception e) {
