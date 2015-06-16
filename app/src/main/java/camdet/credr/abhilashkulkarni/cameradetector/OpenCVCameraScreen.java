@@ -40,24 +40,14 @@ public class OpenCVCameraScreen extends Activity {
     private Display display;
     private boolean canShow = true, canCopy = true, copied = true;
     private int k = 0;
-    private int i = 10, width = 640, height = 480,j,largest_area=0,largest_contour_index = 0,area = 0;
+    private int i = 10, width = 640, height = 480,j;
     private int KERNEL_SIZE = 9, BOX_SIZE = 4, vals;
     private ArrayList<double[][]> window;
-    private int x_val,y_val;
-    private int[] chainCode;
-    private Rect bounding_rect;
-    private double value[];
-    private int NUMBER_OF_CORES;
-    private int[] initialPoint;
-    private Mat real,merged,canny,dst,thr;
-    private Bitmap bmap;
-    private File imagesFolder;
-    private String name;
-    private Menu menu;
-    private MenuItem menuitem;
-    private List<MatOfPoint> contours;
     private FrameProcessManager manager;
-
+    private Menu menu;
+    private File imagesFolder;
+    private int NUMBER_OF_CORES;
+    private String name;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         Log.i(TAG, "called OpenCV onCreate");
@@ -69,11 +59,19 @@ public class OpenCVCameraScreen extends Activity {
         NUMBER_OF_CORES = Runtime.getRuntime().availableProcessors();
        // mOpenCvCannyView = (CameraBridgeViewBase) findViewById(R.id.CannyOpenCvView);
         window = new ArrayList<>();
+
+        File f = new File(Environment.getExternalStorageDirectory() + "/CredRImages");
+        if (f.exists()) {
+            imagesFolder = f;
+        } else {
+            imagesFolder = new File(Environment.getExternalStorageDirectory(), "CredRImages");
+            imagesFolder.mkdirs();
+        }
         Log.d(TAG,"Initial Size: " + window.size());
         k = 0;
         mOpenCvCameraView.setMaxFrameSize(640,480);
 
-        manager = new FrameProcessManager();
+        manager = new FrameProcessManager(this);
         mOpenCvCameraView.setCvCameraViewListener(manager);
     }
 
@@ -111,31 +109,6 @@ public class OpenCVCameraScreen extends Activity {
     }*/
 
 
-    private void setvalues(double[] val) {
-        Log.d("Values","Length: " + dst.get(0,0).length);
-        double[][] data = new double[BOX_SIZE][BOX_SIZE];
-        for(int x = 0; x < KERNEL_SIZE;x++) {
-            for (int y = 0; y < BOX_SIZE; y++)
-                for (int z = 0; z < BOX_SIZE; z++) {
-                    try {
-                        data[y][z] = thr.get(y + (int) val[0] - 1, z + (int) val[1] - 1)[0];
-                    } catch (NullPointerException e) {
-                        Log.d(TAG, "Error");
-                    }
-                }
-            window.add(x, data);
-        }
-    }
-
-    private void outputvalues() {
-        for(int k = 0;k < window.size();k++)
-            for(int l = 0;l < 4;l++)
-                for(int m = 0;m < 4;m++) {
-                    if(window.get(k)[l][m]==255.0)
-                        Log.d("Values", "Vector: " + k + " Row: " + l + " Column: " + m + " Value: " + window.get(k)[l][m]);
-                }
-    }
-
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
@@ -172,7 +145,47 @@ public class OpenCVCameraScreen extends Activity {
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         if (event.getAction() == MotionEvent.ACTION_DOWN) {
-            manager.saveImage();
+            Bitmap bmap;
+            Mat real = manager.getLastFrame();
+
+            if(real == null)
+                return true;
+
+            Log.d(TAG, String.valueOf(real.cols()) + " : " + String.valueOf(real.rows()));
+            j = imagesFolder.listFiles().length;
+            Log.d(TAG, "Number of Files is: " + String.valueOf(j));
+            name = "CredR_OpenCV_" + String.valueOf(j) + ".jpg";
+            File f = new File(imagesFolder, name);
+            bmap = Bitmap.createBitmap(real.cols(), real.rows(), Bitmap.Config.ARGB_8888);
+            try {
+                Utils.matToBitmap(real, bmap);
+            }
+            catch (IllegalArgumentException e){
+                Log.e(TAG,"OpenCVCameraScreen: 216 " + e.getMessage());
+            }
+
+            try {
+                f.createNewFile();
+            } catch (IOException e) {
+                Log.e(TAG,"OpenCVCameraScreen: 221 " + e.getMessage());
+            }
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+
+            try {
+                bmap.compress(Bitmap.CompressFormat.JPEG, 100, bos);
+            } catch (NullPointerException e) {
+                Log.e(TAG,"OpenCVCameraScreen: 229 " + e.getMessage());
+            }
+            byte[] imgData = bos.toByteArray();
+            try {
+                FileOutputStream fos = new FileOutputStream(f);
+
+                fos.write(imgData);
+                fos.flush();
+                fos.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
             Toast.makeText(this, "Image Taken: " + name, Toast.LENGTH_LONG).show();
         }
 
