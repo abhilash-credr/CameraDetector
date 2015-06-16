@@ -1,11 +1,13 @@
 package camdet.credr.abhilashkulkarni.cameradetector;
 
 import android.graphics.Bitmap;
+import android.os.Environment;
 import android.util.Log;
 import android.view.Display;
 import android.view.Menu;
 import android.view.MenuItem;
 
+import org.opencv.android.Utils;
 import org.opencv.core.CvException;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
@@ -15,9 +17,14 @@ import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
 import org.opencv.imgproc.Imgproc;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.ArrayBlockingQueue;
 
 import static org.opencv.core.Core.addWeighted;
 import static org.opencv.imgproc.Imgproc.COLOR_GRAY2RGBA;
@@ -47,13 +54,29 @@ public class FrameProcessManager{
     private MenuItem menuitem;
     private List<MatOfPoint> contours;
     private String TAG = "Check";
+    private Queue PendingQueue;
+    private Queue ProcessingQueue;
+
+    public FrameProcessManager(){
+        File f = new File(Environment.getExternalStorageDirectory() + "/CredRImages");
+        if (f.exists()) {
+            imagesFolder = f;
+        } else {
+            imagesFolder = new File(Environment.getExternalStorageDirectory(), "CredRImages");
+            imagesFolder.mkdirs();
+        }
+        PendingQueue = new ArrayBlockingQueue(20);
+        ProcessingQueue = new ArrayBlockingQueue(4);
+    }
     public static interface Processed {
         public void onProcessComplete(Mat outputFrame);
     }
 
     public void addFrameToQueue(CameraTraceView.CvCameraViewFrame inputFrame, Processed listener) {
         real = inputFrame.rgba();
+
         if (i == 10) {
+            PendingQueue.add(real);
             if(copied) {
                 canCopy = true;
                 copied = false;
@@ -174,5 +197,56 @@ public class FrameProcessManager{
 
     public void onCameraViewStopped() {
 
+    }
+
+
+
+    public class Worker implements Runnable {
+
+        public void Worker(Mat inputFrame, Processed callback ){
+
+        }
+        @Override
+        public void run() {
+
+        }
+    }
+
+    public void saveImage(){
+        Log.d(TAG, String.valueOf(merged.cols()) + " : " + String.valueOf(merged.rows()));
+        j = imagesFolder.listFiles().length;
+        Log.d(TAG, "Number of Files is: " + String.valueOf(j));
+        name = "CredR_OpenCV_" + String.valueOf(j) + ".jpg";
+        File f = new File(imagesFolder, name);
+        bmap = Bitmap.createBitmap(merged.cols(), merged.rows(), Bitmap.Config.ARGB_8888);
+        try {
+            Utils.matToBitmap(real, bmap);
+        }
+        catch (IllegalArgumentException e){
+            Log.e(TAG,"OpenCVCameraScreen: 216 " + e.getMessage());
+        }
+
+        try {
+            f.createNewFile();
+        } catch (IOException e) {
+            Log.e(TAG,"OpenCVCameraScreen: 221 " + e.getMessage());
+        }
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+
+        try {
+            bmap.compress(Bitmap.CompressFormat.JPEG, 100, bos);
+        } catch (NullPointerException e) {
+            Log.e(TAG,"OpenCVCameraScreen: 229 " + e.getMessage());
+        }
+        byte[] imgData = bos.toByteArray();
+        try {
+            FileOutputStream fos = new FileOutputStream(f);
+
+            fos.write(imgData);
+            fos.flush();
+            fos.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }

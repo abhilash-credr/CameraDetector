@@ -33,11 +33,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.opencv.core.Core.addWeighted;
-import static org.opencv.imgproc.Imgproc.COLOR_GRAY2RGBA;
-import static org.opencv.imgproc.Imgproc.cvtColor;
-import static org.opencv.imgproc.Imgproc.findContours;
-
 
 public class OpenCVCameraScreen extends Activity {
     private String TAG = "WTF";
@@ -61,6 +56,7 @@ public class OpenCVCameraScreen extends Activity {
     private Menu menu;
     private MenuItem menuitem;
     private List<MatOfPoint> contours;
+    private FrameProcessManager manager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -74,18 +70,11 @@ public class OpenCVCameraScreen extends Activity {
        // mOpenCvCannyView = (CameraBridgeViewBase) findViewById(R.id.CannyOpenCvView);
         window = new ArrayList<>();
         Log.d(TAG,"Initial Size: " + window.size());
-        initialPoint = new int[2];
         k = 0;
         mOpenCvCameraView.setMaxFrameSize(640,480);
-        File f = new File(Environment.getExternalStorageDirectory() + "/CredRImages");
-        if (f.exists()) {
-            imagesFolder = f;
-        } else {
-            imagesFolder = new File(Environment.getExternalStorageDirectory(), "CredRImages");
-            imagesFolder.mkdirs();
-        }
 
-        mOpenCvCameraView.setCvCameraViewListener(new FrameProcessManager());
+        manager = new FrameProcessManager();
+        mOpenCvCameraView.setCvCameraViewListener(manager);
     }
 
 
@@ -183,42 +172,8 @@ public class OpenCVCameraScreen extends Activity {
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         if (event.getAction() == MotionEvent.ACTION_DOWN) {
-            Log.d(TAG, String.valueOf(merged.cols()) + " : " + String.valueOf(merged.rows()));
-            j = imagesFolder.listFiles().length;
-            Log.d(TAG, "Number of Files is: " + String.valueOf(j));
-            name = "CredR_OpenCV_" + String.valueOf(j) + ".jpg";
-            File f = new File(imagesFolder, name);
-            bmap = Bitmap.createBitmap(merged.cols(), merged.rows(), Bitmap.Config.ARGB_8888);
-            Toast.makeText(this,"Image Taken: " + name,Toast.LENGTH_LONG).show();
-            try {
-                Utils.matToBitmap(real, bmap);
-            }
-            catch (IllegalArgumentException e){
-                Log.e(TAG,"OpenCVCameraScreen: 216 " + e.getMessage());
-            }
-
-            try {
-                f.createNewFile();
-            } catch (IOException e) {
-                Log.e(TAG,"OpenCVCameraScreen: 221 " + e.getMessage());
-            }
-            ByteArrayOutputStream bos = new ByteArrayOutputStream();
-
-            try {
-                bmap.compress(Bitmap.CompressFormat.JPEG, 100, bos);
-            } catch (NullPointerException e) {
-                Log.e(TAG,"OpenCVCameraScreen: 229 " + e.getMessage());
-            }
-            byte[] imgData = bos.toByteArray();
-            try {
-                FileOutputStream fos = new FileOutputStream(f);
-
-                fos.write(imgData);
-                fos.flush();
-                fos.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            manager.saveImage();
+            Toast.makeText(this, "Image Taken: " + name, Toast.LENGTH_LONG).show();
         }
 
         return true;

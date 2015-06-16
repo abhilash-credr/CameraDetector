@@ -476,4 +476,5 @@ public abstract class CameraTraceView extends SurfaceView implements SurfaceHold
 
         return new Size(calcWidth, calcHeight);
     }
+
 }
