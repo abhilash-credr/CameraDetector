@@ -55,8 +55,6 @@ public class FrameProcessManager{
             sequenceId = SEQUENCE++;
             this.inputFrame = inputFrame;
             this.callback = callback;
-            Log.d("WTF","ID: " +  sequenceId);
-            calculated = false;
 
         }
 
@@ -122,18 +120,19 @@ public class FrameProcessManager{
             for(Worker worker : workerList) {
                 if(!worker.busy) {
                     id = element.sequenceId;
-                    if(id % 10 == 1)
+                    if(id % 3 == 0)
                         element.canCalculate = true;
                     else
                         element.canCalculate = false;
-                    worker.setFrameElement(element);
+                    if(id % 3 == 0){
+                        worker.setFrameElement(element);
                     Thread WorkerThread = new Thread(worker);
-                    WorkerThread.start();
+                    WorkerThread.start();}
                     return true;
                 }
             }
 
-            /*for(Thread thread : threadList) {
+           /* for(Thread thread : threadList) {
                 if (thread.getState() != Thread.State.RUNNABLE){
                     Worker worker = new Worker();
                 worker.setFrameElement(element);
@@ -148,19 +147,22 @@ public class FrameProcessManager{
         synchronized static void processingCompleted(final QueueElement element) {
                 activity.runOnUiThread(new Runnable() {
                     @Override
-                    public void run() {
-                        Log.d("WTF","Element_ID: " + element.sequenceId + " Last_ID: " + lastDeliveredSequenceId);
+                    public synchronized void run() {
+
+                        Log.d("WTF2","Element_ID: " + element.sequenceId + " Last_ID: " + lastDeliveredSequenceId);
                         if(element.sequenceId > lastDeliveredSequenceId ){
-                        element.callback.onProcessComplete(element.outputFrame);
-                            lastDeliveredSequenceId = element.sequenceId;}
-                        if(element.sequenceId >= lastDeliveredSequenceId )
-                        ProcessingQueue.remove(element);
+                        if(element.calculated)
+                                element.callback.onProcessComplete(element.outputFrame);
+                            lastDeliveredSequenceId = element.sequenceId;
+                        }
+
+                            ProcessingQueue.remove(element);
                     }
                 });
         }
 
         public static class Worker implements Runnable {
-            private boolean canShow = true, cannied = true;
+            private boolean  cannied = true;
             private int k = 0;
             private int largest_area=0,largest_contour_index = 0,area = 0;
             private int KERNEL_SIZE = 9, BOX_SIZE = 4, vals;
@@ -171,6 +173,7 @@ public class FrameProcessManager{
             private long id;
 
             boolean busy = false;
+            boolean check;
             QueueElement element;
 
             boolean setFrameElement(QueueElement element) {
@@ -182,44 +185,44 @@ public class FrameProcessManager{
 
             @Override
             public void run() {
-                id = element.sequenceId;
                 busy = true;
+
                 real = element.inputFrame.rgba();
-                if(element.canCalculate) {
-                    merged = real.clone();
-
+                     merged = real.clone();
                     canny = element.inputFrame.gray();
-                    dst = new Mat(canny.rows(), canny.cols(), CvType.CV_8UC1);
-                    if (cannied) {
-                        Imgproc.Canny(canny, canny, 60, 100, 3, true);
+                    thr = element.inputFrame.gray();
+                cannied = true;
+                Log.d("WTF1","ID: " + element.canCalculate);
+               // if(element.canCalculate) {
+                    if(cannied) {
                         cannied = false;
-                        Log.d("WTF1", "Cannied was true");
-                    }
-                    if (!cannied) {
-                        Log.d("WTF1", "Cannied was false");
-
+                        canny = element.inputFrame.gray();
+                        dst = new Mat(canny.rows(), canny.cols(), CvType.CV_8UC1);
+                        Imgproc.Canny(canny, canny, 60, 100, 3, true);
+                        element.calculated = true;
                         dst = canny.clone();
-
-                        Imgproc.findContours(dst, contours, new Mat(), Imgproc.RETR_CCOMP, Imgproc.CHAIN_APPROX_SIMPLE);
+                    }
+                    if(!cannied) {
+                        Imgproc.findContours(dst, contours, new Mat(), Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
                         try {
                             cvtColor(canny, canny, COLOR_GRAY2RGBA, 4);
                         } catch (Exception e) {
                             Log.e("WTF", e.getMessage());
                         }
                         Log.d(TAG, "Countours Size: " + contours.size());
-                        element.calculated = true;
-                    }
-                    largest_area = 0;
-                    largest_contour_index = 0;
-                    for (int j = 0; j < contours.size(); j++) {
-                        area = (int) Imgproc.contourArea(contours.get(j));
-                        if (area < 200)
-                            continue;
-                        if (area > largest_area) {
-                            largest_area = area;
-                            largest_contour_index = j;
-                        } else
-                            continue;
+
+                        largest_area = 0;
+                        largest_contour_index = 0;
+                        for (int j = 0; j < contours.size(); j++) {
+                            area = (int) Imgproc.contourArea(contours.get(j));
+                            if (area < 200)
+                                continue;
+                            if (area > largest_area) {
+                                largest_area = area;
+                                largest_contour_index = j;
+                            } else
+                                continue;
+                        }
                     }
                     //window = new ArrayList<>();
                     //Log.e("Values","Point: " + contours.get(largest_contour_index).get(0,0)[0] + " : " + contours.get(largest_contour_index).get(0,0)[1]);
@@ -291,25 +294,21 @@ public class FrameProcessManager{
                         Imgproc.rectangle(canny, new Point(rect.x, rect.y), new Point(rect.x + rect.width, rect.y + rect.height), new Scalar(0, 0, 255));
                     }*/
 
+               // }
 
-                    try {
+                try {
                         addWeighted(real, 1.0, canny, 1.0, 0.0, merged);
-                    } catch (CvException e) {
+                    } catch (Exception e) {
                         Log.e(TAG, e.getMessage());
                     }
-                }
-                else
-                    element.calculated = true;
-
-
-                    k = 1;
-                Log.d("WTF1","Element: " + element.calculated);
-                if(element.calculated){
-                    cannied = true;
+                check = thr!=canny;
+                Log.d("WTF1","Cannied " + check );
+                if( element.calculated && check) {
                     element.outputFrame = canny;
                 }
-                else
+                else {
                     element.outputFrame = real;
+                }
                 processingCompleted(element);
                 busy = false;
             }
